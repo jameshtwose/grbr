@@ -17,6 +17,16 @@ _ = load_dotenv(find_dotenv())
 # configure the page
 st.set_page_config(page_title="GRBR App", page_icon=":sparkles:")
 
+# HIDE STREAMLIT STYLE
+hide_streamlit_style = """
+                        <style>
+                        #MainMenu {visibility: hidden;}
+                        footer {visibility: hidden;}
+                        header {visibility: hidden;}
+                        </style>
+                        """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 
 # @st.cache_data(ttl=60 * 60 * 24)
 def convert_df(df):
@@ -66,8 +76,11 @@ if input_term:
                 "link": [response[i]["link"]],
             }
         )])
-    
+
     df_to_show = (all_df
+                  .assign(**{"summary_length": all_df.summary.str.len()})
+                  .loc[lambda x: x.summary_length > 20]
+                  .drop("summary_length", axis=1)
                   .drop_duplicates(subset=['summary'])
                   .reset_index(drop=True)
                   .head(5)
@@ -75,17 +88,17 @@ if input_term:
 
     st.write(df_to_show)
 
-    query_reformat = "".join(
-        [x for x in input_term.lower() if x.isalnum() or x.isspace()]
-    ).replace(" ", "_")
+query_reformat = "".join(
+    [x for x in input_term.lower() if x.isalnum() or x.isspace()]
+).replace(" ", "_")
 
-    csv = convert_df(all_df)
-    st.download_button(
-        label="Download data as CSV",
-        data=csv,
-        file_name=f"grbr_{query_reformat}.csv",
-        mime="text/csv",
-    )
+csv = convert_df(all_df)
+st.download_button(
+    label="Download data as CSV",
+    data=csv,
+    file_name=f"grbr_{query_reformat}.csv",
+    mime="text/csv",
+)
 
 st.markdown(
     """
