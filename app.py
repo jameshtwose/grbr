@@ -88,17 +88,17 @@ if input_term:
 
     st.write(df_to_show)
 
-query_reformat = "".join(
-    [x for x in input_term.lower() if x.isalnum() or x.isspace()]
-).replace(" ", "_")
+    query_reformat = "".join(
+        [x for x in input_term.lower() if x.isalnum() or x.isspace()]
+    ).replace(" ", "_")
 
-csv = convert_df(all_df)
-st.download_button(
-    label="Download data as CSV",
-    data=csv,
-    file_name=f"grbr_{query_reformat}.csv",
-    mime="text/csv",
-)
+    csv = convert_df(all_df)
+    st.download_button(
+        label="Download data as CSV",
+        data=csv,
+        file_name=f"grbr_{query_reformat}.csv",
+        mime="text/csv",
+    )
 
 st.markdown(
     """
