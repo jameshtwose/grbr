@@ -1,0 +1,6 @@
+openai
+python-dotenv
+google-api-python-client
+beautifulsoup4
+streamlit
+stqdm
