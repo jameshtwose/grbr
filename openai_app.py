@@ -38,11 +38,11 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # main grbr app
 st.title("GRBR - a links and summary generator tool")
-st.write("GRBR is a tool that generates links and summaries for a given RSS feed.")
-input_term = st.text_input("Enter your google alert RSS feed here:")
+st.write("GRBR is a tool that generates links and summaries for a given query term.")
+input_term = st.text_input("Enter your query term here:")
 if input_term:
     response = search(query_term=input_term)
-    # st.write(f"Here are the top 5 links for '{input_term}':")
+    st.write(f"Here are the top 5 links for '{input_term}':")
 
     all_df = pd.DataFrame()
     for i in stqdm(range(10)):
@@ -58,7 +58,17 @@ if input_term:
                 or p in [".", ",", "!", "?", ":", ";", "'", '"', "(", ")"]
             ]
         )
-    
+        completion = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=f"{cleaned_body}\n\nTl;dr",
+            temperature=0.7,
+            max_tokens=60,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=1,
+            stop=["\n"],
+        )
+
         all_df = pd.concat([all_df, pd.DataFrame(
             {
                 "title": [response[i]["title"]],
