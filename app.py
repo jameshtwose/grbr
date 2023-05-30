@@ -6,11 +6,13 @@ import os
 import requests
 from dotenv import load_dotenv, find_dotenv
 from bs4 import BeautifulSoup
-import openai
 from gsearch import search
 import streamlit as st
 import pandas as pd
 from stqdm import stqdm
+from sentence_transformers import SentenceTransformer, util
+from transformers import BertTokenizerFast, EncoderDecoderModel
+import torch
 
 _ = load_dotenv(find_dotenv())
 
@@ -27,6 +29,33 @@ hide_streamlit_style = """
                         """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+# cache the sentence transformer model
+@st.cache_resource()
+def get_sentence_transformer_model():
+    return SentenceTransformer("ConGen-BERT-Tiny")
+
+# cache the text summarizer model
+@st.cache_resource()
+def get_text_summarizer_model_and_transformer():
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model_endpoint = "bert-mini2bert-mini-finetuned-cnn_daily_mail-summarization"
+    tokenizer = BertTokenizerFast.from_pretrained(model_endpoint)
+    model = EncoderDecoderModel.from_pretrained(model_endpoint).to(device)
+    
+    return model, tokenizer
+
+# create the generate summary function
+def generate_summary(text, model, tokenizer):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # cut off at BERT max length 512
+    inputs = tokenizer([text], padding="max_length", truncation=True, max_length=512, return_tensors="pt")
+    input_ids = inputs.input_ids.to(device)
+    attention_mask = inputs.attention_mask.to(device)
+
+    output = model.generate(input_ids, attention_mask=attention_mask)
+
+    return tokenizer.decode(output[0], skip_special_tokens=True)
+
 
 # @st.cache_data(ttl=60 * 60 * 24)
 def convert_df(df):
@@ -34,21 +63,21 @@ def convert_df(df):
     return df.to_csv().encode("utf-8")
 
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
 # main grbr app
 st.title("GRBR - a links and summary generator tool")
-st.write("GRBR is a tool that generates links and summaries for a given RSS feed.")
-input_term = st.text_input("Enter your google alert RSS feed here:")
+st.write("GRBR is a tool that generates links and summaries for a given query term.")
+# st.write("GRBR is a tool that generates links and summaries for a given RSS feed.")
+# input_term = st.text_input("Enter your google alert RSS feed here:")
+input_term = st.text_input("Enter your query term here:")
 if input_term:
     response = search(query_term=input_term)
     # st.write(f"Here are the top 5 links for '{input_term}':")
 
     all_df = pd.DataFrame()
     for i in stqdm(range(10)):
-        html_doc = requests.get(response[0]["link"]).text
+        html_doc = requests.get(response[i]["link"]).text
         soup = BeautifulSoup(html_doc, "html.parser")
-        p_string = " ".join([x.get_text() for x in soup.find_all("p")])
+        p_string = " ".join([x.get_text() for x in soup.find_all(["h1", "h2", "h3", "h4", "h5", "p"])])
         cleaned_body = "".join(
             [
                 p
@@ -58,22 +87,33 @@ if input_term:
                 or p in [".", ",", "!", "?", ":", ";", "'", '"', "(", ")"]
             ]
         )
+        
+        ts_model, ts_tokenizer = get_text_summarizer_model_and_transformer()
+        summary = generate_summary(cleaned_body, ts_model, ts_tokenizer)
+        
+        sentences = [input_term, summary]
+        st_model = get_sentence_transformer_model()
+        embeddings = st_model.encode(sentences)
+        
+        cos_sim = round(util.cos_sim(embeddings[0], embeddings[1]).item(), 4)
     
         all_df = pd.concat([all_df, pd.DataFrame(
             {
                 "title": [response[i]["title"]],
-                "summary": f'{[completion["choices"][0]["text"]]}...',
+                "semantic_similarity": [cos_sim],
+                "summary": [summary],
                 "link": [response[i]["link"]],
             }
         )])
 
     df_to_show = (all_df
-                  .assign(**{"summary_length": all_df.summary.str.len()})
-                  .loc[lambda x: x.summary_length > 20]
-                  .drop("summary_length", axis=1)
+                #   .assign(**{"summary_length": all_df.summary.str.len()})
+                #   .loc[lambda x: x.summary_length > 20]
+                #   .drop("summary_length", axis=1)
                   .drop_duplicates(subset=['summary'])
+                  .sort_values(by="semantic_similarity", ascending=False)
                   .reset_index(drop=True)
-                  .head(5)
+                #   .head(5)
                   )
 
     st.write(df_to_show)

@@ -5,3 +5,8 @@ beautifulsoup4
 streamlit
 stqdm
 lxml
+accelerate>=0.16.0,<1
+transformers[torch]>=4.28.1,<5
+torch<=2
+# langchain
+sentence-transformers
