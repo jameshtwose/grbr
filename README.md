@@ -18,4 +18,7 @@ A link grabber and text summarizer app.
   - https://docs.docker.com/get-docker/
 - Build and run the app
   - `docker build -t grbr .`
-  - `docker run -p 8501:8501 grbr` 
+  - `docker run -p 8501:8501 grbr`
+  - Open http://localhost:8501 in your browser
+  - To stop the app, press `Ctrl+C` in the terminal
+  - To check the RAM/ storage used by Docker, run `docker stats`
