@@ -1,0 +1,7 @@
+galerts.py
+openai_app.py
+openai_EDA.py
+sentence_similarity_bert_variants.py
+text_summarize_bert_variants.py
+text_summarize_dolly.py
+terraform_gcp_deploy/

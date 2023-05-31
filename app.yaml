@@ -1,0 +1,20 @@
+runtime: custom
+env: flex
+resources:
+  cpu: 4
+  memory_gb: 20
+  disk_size_gb: 200
+
+liveness_check:
+  check_interval_sec: 120
+  timeout_sec: 40
+  failure_threshold: 5
+  success_threshold: 5
+  initial_delay_sec: 500
+
+readiness_check:
+  check_interval_sec: 120
+  timeout_sec: 40
+  failure_threshold: 5
+  success_threshold: 5
+  app_start_timeout_sec: 1500
